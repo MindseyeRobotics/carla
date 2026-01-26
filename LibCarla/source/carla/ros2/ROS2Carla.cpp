@@ -24,6 +24,7 @@
 #include "publishers/CarlaOpticalFlowCameraPublisher.h"
 #include "publishers/CarlaSSCameraPublisher.h"
 #include "publishers/CarlaISCameraPublisher.h"
+#include "publishers/CarlaIRCameraPublisher.h"
 #include "publishers/CarlaDVSCameraPublisher.h"
 #include "publishers/CarlaLidarPublisher.h"
 #include "publishers/CarlaSemanticLidarPublisher.h"
@@ -59,6 +60,7 @@ enum ESensors {
   DVSCamera,
   GnssSensor,
   InertialMeasurementUnit,
+  IRCamera,
   LaneInvasionSensor,
   ObstacleDetectionSensor,
   OpticalFlowCamera,
@@ -323,6 +325,24 @@ std::pair<std::shared_ptr<CarlaPublisher>, std::shared_ptr<CarlaTransformPublish
           transform = new_transform;
         }
       } break;
+      case ESensors::IRCamera: {
+        if (ros_name == "ir__") {
+          ros_name.pop_back();
+          ros_name.pop_back();
+          ros_name += string_id;
+          ROS2Interfaces->UpdateActorRosName(actor, ros_name);
+        }
+        std::shared_ptr<CarlaIRCameraPublisher> new_publisher = std::make_shared<CarlaIRCameraPublisher>(ros_name.c_str(), parent_ros_name.c_str());
+        if (new_publisher->Init()) {
+          _publishers.insert({actor, new_publisher});
+          publisher = new_publisher;
+        }
+        std::shared_ptr<CarlaTransformPublisher> new_transform = std::make_shared<CarlaTransformPublisher>(ros_name.c_str(), parent_ros_name.c_str());
+        if (new_transform->Init()) {
+          _transforms.insert({actor, new_transform});
+          transform = new_transform;
+        }
+      } break;
       case ESensors::LaneInvasionSensor: {
         if (ros_name == "lane_invasion__") {
           ros_name.pop_back();
@@ -531,6 +551,29 @@ void ROS2Carla::ProcessDataFromCamera(
         auto sensors = GetOrCreateSensor(ESensors::NormalsCamera, stream_id, actor);
         if (sensors.first) {
           std::shared_ptr<CarlaNormalsCameraPublisher> publisher = std::dynamic_pointer_cast<CarlaNormalsCameraPublisher>(sensors.first);
+          const carla::sensor::s11n::ImageSerializer::ImageHeader *header =
+            reinterpret_cast<const carla::sensor::s11n::ImageSerializer::ImageHeader *>(buffer->data());
+          if (!header)
+            return;
+          if (!publisher->HasBeenInitialized() || !(publisher->GetFov() == Fov))
+            publisher->InitInfoData(0, 0, H, W, Fov, true);
+          publisher->SetImageData(_seconds, _nanoseconds, header->height, header->width, (const uint8_t*) (buffer->data() + carla::sensor::s11n::ImageSerializer::header_offset));
+          publisher->SetCameraInfoData(_seconds, _nanoseconds);
+          publisher->Publish();
+        }
+        if (sensors.second) {
+          std::shared_ptr<CarlaTransformPublisher> publisher = std::dynamic_pointer_cast<CarlaTransformPublisher>(sensors.second);
+          publisher->SetData(_seconds, _nanoseconds, (const float*)&sensor_transform.location, (const float*)&sensor_transform.rotation);
+          publisher->Publish();
+        }
+      }
+      break;
+    case ESensors::IRCamera:
+      log_info("Sensor IRCamera to ROS data: frame.", _frame, "sensor.", sensor_type, "stream.", stream_id, "buffer.", buffer->size());
+      {
+        auto sensors = GetOrCreateSensor(ESensors::IRCamera, stream_id, actor);
+        if (sensors.first) {
+          std::shared_ptr<CarlaIRCameraPublisher> publisher = std::dynamic_pointer_cast<CarlaIRCameraPublisher>(sensors.first);
           const carla::sensor::s11n::ImageSerializer::ImageHeader *header =
             reinterpret_cast<const carla::sensor::s11n::ImageSerializer::ImageHeader *>(buffer->data());
           if (!header)
