@@ -953,6 +953,9 @@ void ROS2::UpdatePX4Bridge(
   if (_px4_bridge->HasNewActuatorControls()) {
     float throttle, roll, pitch, yaw;
     _px4_bridge->GetActuatorControls(throttle, roll, pitch, yaw);
+    // TODO: Add callback mechanism to apply controls to vehicle actor
+    // The controls should be mapped from PX4 normalized values [-1,1] to CARLA vehicle inputs
+    // See ROS2_PX4_BRIDGE_README.md for integration details
   }
 }
 

@@ -47,9 +47,9 @@ namespace ros2 {
   namespace efd = eprosima::fastdds::dds;
   using erc = eprosima::fastrtps::types::ReturnCode_t;
 
+  // Conversion constants
   constexpr float DEG_TO_RAD = M_PI / 180.0f;
   constexpr float HALF = 0.5f;
-  constexpr double NANOS_PER_SECOND = 1e9;
 
   struct ROS2PX4BridgeImpl {
     efd::DomainParticipant* _participant { nullptr };
@@ -345,6 +345,8 @@ namespace ros2 {
   }
 
   void ROS2PX4Bridge::SetTimestamp(double timestamp) {
+    // Note: NANOS_PER_SECOND constant also defined in ROS2.cpp for consistency
+    constexpr double NANOS_PER_SECOND = 1e9;
     _seconds = static_cast<int32_t>(timestamp);
     _nanoseconds = static_cast<uint32_t>((timestamp - _seconds) * NANOS_PER_SECOND);
   }
@@ -360,7 +362,8 @@ namespace ros2 {
   }
 
   void ROS2PX4Bridge::QuaternionFromYaw(float yaw, float& w, float& x, float& y, float& z) {
-    // Simple yaw-only quaternion
+    // Simplified yaw-only quaternion for compass-based orientation (IMU)
+    // For full 6DOF orientation with roll/pitch/yaw, see PublishOdometry()
     float half_yaw = yaw * HALF;
     w = std::cos(half_yaw);
     x = 0.0f;
