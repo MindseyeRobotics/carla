@@ -43,6 +43,7 @@ namespace ros2 {
   class CarlaEgoVehicleControlSubscriber;
   class BasicSubscriber;
   class BasicPublisher;
+  class ROS2PX4Bridge;
 
 class ROS2
 {
@@ -76,6 +77,19 @@ class ROS2
   void RemoveActorCallback(void* actor);
   void RemoveBasicSubscriberCallback(void* actor);
   void AddBasicSubscriberCallback(void* actor, std::string ros_name, ActorMessageCallback callback);
+
+  // PX4 bridge
+  void EnablePX4Bridge(void* vehicle, std::string ros_name);
+  void DisablePX4Bridge();
+  bool IsPX4BridgeEnabled();
+  void UpdatePX4Bridge(
+      const carla::geom::Transform& transform,
+      const carla::geom::Vector3D& velocity,
+      const carla::geom::Vector3D& angular_velocity,
+      const carla::geom::Vector3D& accelerometer,
+      const carla::geom::Vector3D& gyroscope,
+      float compass,
+      const carla::geom::GeoLocation& gps_location);
 
   // enabling streams to publish
   void EnableStream(carla::streaming::detail::stream_id_type id) { _publish_stream.insert(id); }
@@ -165,6 +179,7 @@ void ProcessDataFromCollisionSensor(
   std::unordered_map<void *, std::shared_ptr<CarlaTransformPublisher>> _transforms;
   std::unordered_set<carla::streaming::detail::stream_id_type> _publish_stream;
   std::unordered_map<void *, ActorCallback> _actor_callbacks;
+  std::shared_ptr<ROS2PX4Bridge> _px4_bridge;
 #if defined(WITH_ROS2_DEMO)
   std::shared_ptr<BasicSubscriber> _basic_subscriber;
   std::shared_ptr<BasicPublisher> _basic_publisher;
