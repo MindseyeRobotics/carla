@@ -949,11 +949,10 @@ void ROS2::UpdatePX4Bridge(
   _px4_bridge->PublishGPS(gps_location);
 
   // Check for actuator controls from PX4
+  // Note: This reads controls but application to vehicle requires additional callback integration
   if (_px4_bridge->HasNewActuatorControls()) {
     float throttle, roll, pitch, yaw;
     _px4_bridge->GetActuatorControls(throttle, roll, pitch, yaw);
-    // Note: Actuator controls would be applied through the vehicle control callback
-    // This is a placeholder - actual integration would require additional callback mechanism
   }
 }
 

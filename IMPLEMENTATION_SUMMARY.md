@@ -87,6 +87,20 @@
 1. **Actuator Controls** (`/fmu/out/actuator_controls_0`)
    - Roll, pitch, yaw, throttle
    - Custom px4_msgs::msg::PX4ActuatorControls
+   - **Note**: Currently reads controls but does not automatically apply to vehicle.
+     Full integration requires additional callback mechanism (see Current Limitations).
+
+### Current Limitations
+
+1. **Actuator Control Application**: The bridge receives PX4 actuator controls but does not
+   automatically apply them to the CARLA vehicle. Full bidirectional control requires:
+   - Integration with CARLA's vehicle control callback system
+   - Mapping between PX4 normalized control values [-1, 1] and CARLA vehicle inputs
+   - This is documented in the README under "Current Limitations"
+
+2. **Single Vehicle**: Currently designed for one vehicle at a time.
+
+3. **Standard Messages**: Uses standard ROS2 messages where possible, custom PX4 messages where needed.
 
 ### Coordinate System Handling
 - Automatic conversion between UE4 (X:forward, Y:right, Z:up) and ROS (X:forward, Y:left, Z:up)

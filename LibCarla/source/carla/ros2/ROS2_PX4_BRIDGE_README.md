@@ -199,24 +199,43 @@ All errors are logged to stderr with descriptive messages.
 - Fast-DDS uses efficient zero-copy mechanisms where possible
 - Coordinate transformations are lightweight (matrix operations)
 
+## Current Limitations
+
+1. **Actuator Control Application**: While the bridge can receive PX4 actuator controls, 
+   these are not automatically applied to the CARLA vehicle. Full integration requires:
+   - Callback mechanism to forward controls to vehicle actor
+   - Mapping between PX4 control values and CARLA vehicle control inputs
+   - Integration with CARLA's vehicle physics system
+
+2. **Single Vehicle Support**: Currently designed for a single vehicle. Multiple vehicle
+   support would require instantiating multiple bridge instances.
+
+3. **Message Types**: Uses standard ROS2 messages where possible, but some PX4-specific
+   messages (like VehicleCommand) are not yet implemented.
+
 ## Future Enhancements
 
 Potential areas for expansion:
 
-1. **Additional PX4 Messages**
+1. **Complete Actuator Control Integration**
+   - Full callback mechanism for applying PX4 controls to CARLA vehicles
+   - Proper mapping between control spaces
+   - Support for different vehicle types (multirotor, fixed-wing, rover)
+
+2. **Additional PX4 Messages**
    - Vehicle commands
    - Offboard control mode
    - Vehicle status
 
-2. **Bidirectional Vehicle Control**
-   - Full integration of actuator controls with CARLA vehicle physics
-   - Support for different vehicle types (multirotor, fixed-wing, rover)
+3. **Multiple Vehicle Support**
+   - Bridge multiple vehicles simultaneously
+   - Independent PX4 instances per vehicle
 
-3. **Advanced Coordinate Transformations**
+4. **Advanced Coordinate Transformations**
    - Support for FRD (Front-Right-Down) convention
    - NED (North-East-Down) frame support
 
-4. **Quality of Service (QoS) Configuration**
+5. **Quality of Service (QoS) Configuration**
    - Configurable reliability and durability settings
    - Latency optimization
 
