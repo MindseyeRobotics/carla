@@ -938,7 +938,8 @@ void ROS2::UpdatePX4Bridge(
   }
 
   // Update timestamp
-  double timestamp = _seconds + _nanoseconds / 1e9;
+  constexpr double NANOS_PER_SECOND = 1e9;
+  double timestamp = _seconds + _nanoseconds / NANOS_PER_SECOND;
   _px4_bridge->SetTimestamp(timestamp);
   _px4_bridge->SetFrame(_frame);
 

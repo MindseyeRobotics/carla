@@ -47,6 +47,10 @@ namespace ros2 {
   namespace efd = eprosima::fastdds::dds;
   using erc = eprosima::fastrtps::types::ReturnCode_t;
 
+  constexpr float DEG_TO_RAD = M_PI / 180.0f;
+  constexpr float HALF = 0.5f;
+  constexpr double NANOS_PER_SECOND = 1e9;
+
   struct ROS2PX4BridgeImpl {
     efd::DomainParticipant* _participant { nullptr };
     
@@ -201,17 +205,17 @@ namespace ros2 {
 
     // Convert rotation to quaternion
     auto rotation = transform.rotation;
-    float yaw = rotation.yaw * M_PI / 180.0f;
-    float pitch = rotation.pitch * M_PI / 180.0f;
-    float roll = rotation.roll * M_PI / 180.0f;
+    float yaw = rotation.yaw * DEG_TO_RAD;
+    float pitch = rotation.pitch * DEG_TO_RAD;
+    float roll = rotation.roll * DEG_TO_RAD;
 
     // Convert to quaternion (ZYX intrinsic rotations)
-    float cy = std::cos(yaw * 0.5f);
-    float sy = std::sin(yaw * 0.5f);
-    float cp = std::cos(pitch * 0.5f);
-    float sp = std::sin(pitch * 0.5f);
-    float cr = std::cos(roll * 0.5f);
-    float sr = std::sin(roll * 0.5f);
+    float cy = std::cos(yaw * HALF);
+    float sy = std::sin(yaw * HALF);
+    float cp = std::cos(pitch * HALF);
+    float sp = std::sin(pitch * HALF);
+    float cr = std::cos(roll * HALF);
+    float sr = std::sin(roll * HALF);
 
     float qw = cr * cp * cy + sr * sp * sy;
     float qx = sr * cp * cy - cr * sp * sy;
@@ -247,7 +251,7 @@ namespace ros2 {
     _impl->_imu_msg.header().frame_id("imu_link");
 
     // Convert orientation from compass
-    float yaw = compass * M_PI / 180.0f;
+    float yaw = compass * DEG_TO_RAD;
     float qw, qx, qy, qz;
     QuaternionFromYaw(yaw, qw, qx, qy, qz);
     
@@ -342,7 +346,7 @@ namespace ros2 {
 
   void ROS2PX4Bridge::SetTimestamp(double timestamp) {
     _seconds = static_cast<int32_t>(timestamp);
-    _nanoseconds = static_cast<uint32_t>((timestamp - _seconds) * 1e9);
+    _nanoseconds = static_cast<uint32_t>((timestamp - _seconds) * NANOS_PER_SECOND);
   }
 
   void ROS2PX4Bridge::CoordinateTransform(
@@ -357,7 +361,7 @@ namespace ros2 {
 
   void ROS2PX4Bridge::QuaternionFromYaw(float yaw, float& w, float& x, float& y, float& z) {
     // Simple yaw-only quaternion
-    float half_yaw = yaw * 0.5f;
+    float half_yaw = yaw * HALF;
     w = std::cos(half_yaw);
     x = 0.0f;
     y = 0.0f;
