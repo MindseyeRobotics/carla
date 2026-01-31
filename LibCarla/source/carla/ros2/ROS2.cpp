@@ -39,6 +39,7 @@
 
 #include "subscribers/CarlaSubscriber.h"
 #include "subscribers/CarlaEgoVehicleControlSubscriber.h"
+#include "ROS2PX4Bridge.h"
 #if defined(WITH_ROS2_DEMO)
   #include "subscribers/BasicSubscriber.h"
 #endif
@@ -886,11 +887,76 @@ void ROS2::Shutdown() {
   }
   _clock_publisher.reset();
   _controller.reset();
+  if (_px4_bridge) {
+    _px4_bridge->Destroy();
+    _px4_bridge.reset();
+  }
   _enabled = false;
 #if defined(WITH_ROS2_DEMO)
   _basic_publisher.reset();
   _basic_subscriber.reset();
 #endif
+}
+
+void ROS2::EnablePX4Bridge(void* vehicle, std::string ros_name) {
+  if (_px4_bridge) {
+    DisablePX4Bridge();
+  }
+  
+  _px4_bridge = std::make_shared<ROS2PX4Bridge>(vehicle, ros_name.c_str(), "");
+  if (_px4_bridge->Init()) {
+    log_info("PX4 Bridge enabled for vehicle: ", ros_name);
+  } else {
+    log_error("Failed to initialize PX4 Bridge");
+    _px4_bridge.reset();
+  }
+}
+
+void ROS2::DisablePX4Bridge() {
+  if (_px4_bridge) {
+    _px4_bridge->Destroy();
+    _px4_bridge.reset();
+    log_info("PX4 Bridge disabled");
+  }
+}
+
+bool ROS2::IsPX4BridgeEnabled() {
+  return _px4_bridge && _px4_bridge->IsAlive();
+}
+
+void ROS2::UpdatePX4Bridge(
+    const carla::geom::Transform& transform,
+    const carla::geom::Vector3D& velocity,
+    const carla::geom::Vector3D& angular_velocity,
+    const carla::geom::Vector3D& accelerometer,
+    const carla::geom::Vector3D& gyroscope,
+    float compass,
+    const carla::geom::GeoLocation& gps_location) {
+  
+  if (!_px4_bridge || !_px4_bridge->IsAlive()) {
+    return;
+  }
+
+  // Update timestamp
+  constexpr double NANOS_PER_SECOND = 1e9;
+  double timestamp = _seconds + _nanoseconds / NANOS_PER_SECOND;
+  _px4_bridge->SetTimestamp(timestamp);
+  _px4_bridge->SetFrame(_frame);
+
+  // Publish vehicle state to PX4
+  _px4_bridge->PublishOdometry(transform, velocity, angular_velocity);
+  _px4_bridge->PublishIMU(accelerometer, gyroscope, compass);
+  _px4_bridge->PublishGPS(gps_location);
+
+  // Check for actuator controls from PX4
+  // Note: This reads controls but application to vehicle requires additional callback integration
+  if (_px4_bridge->HasNewActuatorControls()) {
+    float throttle, roll, pitch, yaw;
+    _px4_bridge->GetActuatorControls(throttle, roll, pitch, yaw);
+    // TODO: Add callback mechanism to apply controls to vehicle actor
+    // The controls should be mapped from PX4 normalized values [-1,1] to CARLA vehicle inputs
+    // See ROS2_PX4_BRIDGE_README.md for integration details
+  }
 }
 
 } // namespace ros2
