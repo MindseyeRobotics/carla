@@ -898,6 +898,14 @@ void ROS2::Shutdown() {
 #endif
 }
 
+void ROS2::SetPX4VehicleControlCallback(PX4ControlCallback callback) {
+  if (_px4_bridge && _px4_bridge->IsAlive()) {
+    _px4_bridge->SetVehicleControlCallback(std::move(callback));
+  } else {
+    log_warning("SetPX4VehicleControlCallback called before PX4 bridge is enabled — callback ignored");
+  }
+}
+
 void ROS2::EnablePX4Bridge(void* vehicle, std::string ros_name) {
   if (_px4_bridge) {
     DisablePX4Bridge();
@@ -948,15 +956,10 @@ void ROS2::UpdatePX4Bridge(
   _px4_bridge->PublishIMU(accelerometer, gyroscope, compass);
   _px4_bridge->PublishGPS(gps_location);
 
-  // Check for actuator controls from PX4
-  // Note: This reads controls but application to vehicle requires additional callback integration
-  if (_px4_bridge->HasNewActuatorControls()) {
-    float throttle, roll, pitch, yaw;
-    _px4_bridge->GetActuatorControls(throttle, roll, pitch, yaw);
-    // TODO: Add callback mechanism to apply controls to vehicle actor
-    // The controls should be mapped from PX4 normalized values [-1,1] to CARLA vehicle inputs
-    // See ROS2_PX4_BRIDGE_README.md for integration details
-  }
+  // Check for actuator controls from PX4 and fire the registered callback.
+  // If SetPX4VehicleControlCallback() has been called, the callback fires
+  // inline inside HasNewActuatorControls() — no extra plumbing needed here.
+  _px4_bridge->HasNewActuatorControls();
 }
 
 } // namespace ros2

@@ -81,6 +81,7 @@ namespace ros2 {
     bool _new_actuator_message { false };
     bool _alive { true };
     void* _vehicle { nullptr };
+    ROS2PX4Bridge::VehicleControlCallback _control_callback;
   };
 
   bool ROS2PX4Bridge::Init() {
@@ -295,15 +296,36 @@ namespace ros2 {
     }
 
     efd::SampleInfo info;
-    eprosima::fastrtps::types::ReturnCode_t rcode = 
+    eprosima::fastrtps::types::ReturnCode_t rcode =
         _impl->_actuator_reader->take_next_sample(&_impl->_actuator_msg, &info);
-    
+
     if (rcode == erc::ReturnCodeValue::RETCODE_OK) {
         _impl->_new_actuator_message = true;
+
+        // Fire the vehicle control callback immediately so the caller's physics tick
+        // can apply the controls without a separate GetActuatorControls() call.
+        if (_impl->_control_callback) {
+            const auto& controls = _impl->_actuator_msg.control();
+            // PX4 actuator_controls_0 layout:
+            //   [0] roll   [-1, 1]
+            //   [1] pitch  [-1, 1]
+            //   [2] yaw    [-1, 1]
+            //   [3] thrust [0,  1]
+            float roll     = controls[0];
+            float pitch    = controls[1];
+            float yaw      = controls[2];
+            float throttle = controls[3];
+            _impl->_control_callback(throttle, roll, pitch, yaw);
+        }
+
         return true;
     }
-    
+
     return false;
+  }
+
+  void ROS2PX4Bridge::SetVehicleControlCallback(VehicleControlCallback callback) {
+    _impl->_control_callback = std::move(callback);
   }
 
   void ROS2PX4Bridge::GetActuatorControls(float& throttle, float& roll, float& pitch, float& yaw) {

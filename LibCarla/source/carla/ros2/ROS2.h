@@ -82,6 +82,13 @@ class ROS2
   void EnablePX4Bridge(void* vehicle, std::string ros_name);
   void DisablePX4Bridge();
   bool IsPX4BridgeEnabled();
+
+  // Register a callback that fires each simulation tick when PX4 sends new actuator controls.
+  // The callback signature is: void(float throttle, float roll, float pitch, float yaw)
+  // throttle: [0, 1], roll/pitch/yaw: [-1, 1]
+  using PX4ControlCallback = std::function<void(float throttle, float roll, float pitch, float yaw)>;
+  void SetPX4VehicleControlCallback(PX4ControlCallback callback);
+
   void UpdatePX4Bridge(
       const carla::geom::Transform& transform,
       const carla::geom::Vector3D& velocity,
