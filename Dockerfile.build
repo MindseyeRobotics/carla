@@ -1,0 +1,45 @@
+FROM ubuntu:22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# System dependencies required by UE5 + CARLA build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    ninja-build \
+    git \
+    git-lfs \
+    curl \
+    wget \
+    unzip \
+    python3 \
+    python3-pip \
+    python3-dev \
+    libssl-dev \
+    libffi-dev \
+    clang-14 \
+    lld-14 \
+    libc++-14-dev \
+    libc++abi-14-dev \
+    libomp-14-dev \
+    libvulkan1 \
+    libvulkan-dev \
+    vulkan-tools \
+    xdg-user-dirs \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set clang-14 as default compiler (required by UE5)
+RUN update-alternatives --install /usr/bin/clang   clang   /usr/bin/clang-14   100 \
+ && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-14 100
+
+RUN pip3 install --no-cache-dir setuptools wheel
+
+WORKDIR /workspace/carla
+COPY . .
+
+# GIT_LOCAL_CREDENTIALS secret: github_username@github_personal_access_token
+# Pass via: DOCKER_BUILDKIT=1 docker build --secret id=git_creds,src=.git_creds
+RUN --mount=type=secret,id=git_creds \
+    export GIT_LOCAL_CREDENTIALS=$(cat /run/secrets/git_creds) && \
+    bash CarlaSetup.sh --skip-prerequisites

@@ -1,0 +1,10 @@
+FROM carla-merc:latest
+
+EXPOSE 2000 2001 8080
+
+ENTRYPOINT ["/workspace/carla/Build/Package/CarlaUnreal.sh", \
+            "-RenderOffScreen", \
+            "-nosound", \
+            "-ros2", \
+            "-carla-primary-host=0.0.0.0", \
+            "-carla-primary-port=2000"]
