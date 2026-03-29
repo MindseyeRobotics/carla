@@ -1,0 +1,45 @@
+# CARLA UE5 Docker stack — standalone
+# Use this if you want to run CARLA + HIL bridge without the full vertex sim_start.sh
+#
+# Usage:
+#   docker compose -f docker-compose.carla.yml up          # headless
+#   docker compose -f docker-compose.carla.yml down
+
+services:
+  carla_server:
+    image: carla-merc-server:latest
+    container_name: carla_server
+    network_mode: host
+    runtime: nvidia
+    environment:
+      - CARLA_HOST=0.0.0.0
+      - CARLA_PORT=2000
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - __GLX_VENDOR_LIBRARY_NAME=nvidia
+      - __NV_PRIME_RENDER_OFFLOAD=1
+      - SDL_VIDEODRIVER=offscreen
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c",
+             "import carla; c=carla.Client('localhost',2000); c.set_timeout(5); c.get_world()"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  carla_bridge:
+    image: carla_bridge:latest
+    container_name: carla_bridge
+    network_mode: host
+    depends_on:
+      carla_server:
+        condition: service_healthy
+    environment:
+      - CARLA_HOST=localhost
+      - CARLA_PORT=2000
+      - MAVLINK_CONNECTION=udpin:0.0.0.0:14550
+      - TAKEOFF_ALT=10.0
+      # Set VERBOSE=1 for debug logging
+      - VERBOSE=
+    restart: unless-stopped

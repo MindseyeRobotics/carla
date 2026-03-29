@@ -2,7 +2,7 @@ FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-# System dependencies required by UE5 + CARLA build
+# ── System dependencies (UE5 build requirements) ─────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -25,21 +25,33 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libvulkan1 \
     libvulkan-dev \
     vulkan-tools \
+    libxcursor-dev \
+    libxrandr-dev \
+    libxinerama-dev \
+    libxi-dev \
     xdg-user-dirs \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# Set clang-14 as default compiler (required by UE5)
+# ── Compiler: clang-14 required by UE5 ───────────────────────────────────────
 RUN update-alternatives --install /usr/bin/clang   clang   /usr/bin/clang-14   100 \
  && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-14 100
 
 RUN pip3 install --no-cache-dir setuptools wheel
 
+# ── CARLA source ──────────────────────────────────────────────────────────────
 WORKDIR /workspace/carla
 COPY . .
 
-# GIT_LOCAL_CREDENTIALS secret: github_username@github_personal_access_token
-# Pass via: DOCKER_BUILDKIT=1 docker build --secret id=git_creds,src=.git_creds
+# ── Build ─────────────────────────────────────────────────────────────────────
+# Pass GitHub credentials as a BuildKit secret — never baked into the image.
+# Format: github_username@github_personal_access_token
+# Usage:  DOCKER_BUILDKIT=1 docker build --secret id=git_creds,src=.git_creds ...
 RUN --mount=type=secret,id=git_creds \
     export GIT_LOCAL_CREDENTIALS=$(cat /run/secrets/git_creds) && \
     bash CarlaSetup.sh --skip-prerequisites
+
+# ── Install Python API wheel ──────────────────────────────────────────────────
+RUN cmake --build Build --target carla-python-api-install 2>/dev/null || \
+    pip3 install --no-cache-dir PythonAPI/carla/dist/carla-*.whl 2>/dev/null || \
+    echo "[warn] Python API wheel not installed — run manually if needed"
